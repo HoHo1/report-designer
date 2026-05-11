@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: report-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: report_db
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - report-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: report-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - report-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: report-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/report_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - report-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: report-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - report-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  report-network:
+    driver: bridge
