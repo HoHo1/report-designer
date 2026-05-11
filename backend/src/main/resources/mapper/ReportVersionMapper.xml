@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.report.mapper.ReportVersionMapper">
+    <select id="selectMaxVersionByReportId" resultType="java.lang.Integer">
+        SELECT MAX(version_num) FROM report_version WHERE report_id = #{reportId}
+    </select>
+
+    <delete id="deleteOldVersions">
+        DELETE FROM report_version
+        WHERE report_id = #{reportId}
+        AND id NOT IN (
+            SELECT id FROM (
+                SELECT id FROM report_version
+                WHERE report_id = #{reportId}
+                ORDER BY version_num DESC
+                LIMIT #{keepCount}
+            ) t
+        )
+    </delete>
+</mapper>
